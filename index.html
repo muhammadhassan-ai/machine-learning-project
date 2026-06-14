@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetes Risk Assessment System</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            padding: 30px 0 20px;
+        }
+        header .icon { font-size: 3rem; margin-bottom: 8px; }
+        header h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.5px; }
+        header p  { color: #a8d8ea; margin-top: 6px; font-size: 0.95rem; }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 32px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            color: #1a3a4a;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e8f4fd;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 16px;
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+
+        .form-group label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #445;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 9px 12px;
+            border: 1.5px solid #dce6ef;
+            border-radius: 8px;
+            font-size: 0.92rem;
+            color: #333;
+            background: #f9fbfd;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.15);
+            background: white;
+        }
+
+        .form-group small {
+            font-size: 0.73rem;
+            color: #888;
+        }
+
+        .btn-predict {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #3498db, #1a6eb5);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: transform 0.15s, box-shadow 0.15s;
+            margin-top: 4px;
+        }
+        .btn-predict:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52,152,219,0.4);
+        }
+        .btn-predict:active { transform: translateY(0); }
+        .btn-predict:disabled { background: #bbb; cursor: not-allowed; transform: none; }
+
+        /* Result panel */
+        #result-panel { display: none; }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+        }
+        .result-icon { font-size: 2.8rem; }
+        .result-label { font-size: 1.7rem; font-weight: 800; }
+        .result-confidence { font-size: 0.9rem; opacity: 0.85; margin-top: 2px; }
+
+        .risk-message {
+            background: #f4f8fc;
+            border-left: 4px solid #3498db;
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.92rem;
+            color: #2c3e50;
+            margin-bottom: 18px;
+        }
+
+        .prob-bars { display: flex; flex-direction: column; gap: 10px; }
+        .prob-row {
+            display: grid;
+            grid-template-columns: 130px 1fr 45px;
+            align-items: center;
+            gap: 10px;
+        }
+        .prob-label { font-size: 0.87rem; font-weight: 600; color: #445; }
+        .prob-bar-track {
+            background: #eef2f7;
+            border-radius: 20px;
+            height: 10px;
+            overflow: hidden;
+        }
+        .prob-bar-fill {
+            height: 100%;
+            border-radius: 20px;
+            transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .prob-val { font-size: 0.85rem; font-weight: 700; color: #333; text-align: right; }
+
+        .bar-0 { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+        .bar-1 { background: linear-gradient(90deg, #e67e22, #f39c12); }
+        .bar-2 { background: linear-gradient(90deg, #c0392b, #e74c3c); }
+
+        .disclaimer {
+            background: #fff8e1;
+            border: 1.5px solid #ffc107;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.82rem;
+            color: #5a4a00;
+            margin-top: 8px;
+        }
+        .disclaimer strong { color: #c47b00; }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 18px; height: 18px;
+            border: 3px solid rgba(255,255,255,0.4);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Error */
+        .error-msg {
+            background: #fff0f0;
+            border: 1.5px solid #e74c3c;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #c0392b;
+            font-size: 0.9rem;
+        }
+
+        footer {
+            text-align: center;
+            color: rgba(255,255,255,0.45);
+            font-size: 0.78rem;
+            padding: 16px 0 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <header>
+        <div class="icon">🏥</div>
+        <h1>Smart Diabetes Risk Assessment</h1>
+        <p>Ensemble ML System · Random Forest + Gradient Boosting + AdaBoost · Voting Classifier</p>
+    </header>
+
+    <!-- Input Form -->
+    <div class="card">
+        <h2>👤 Patient Demographics</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Age Range</label>
+                <select name="age" id="age">
+                    <option value="[0-10)">[0-10)</option>
+                    <option value="[10-20)">[10-20)</option>
+                    <option value="[20-30)">[20-30)</option>
+                    <option value="[30-40)">[30-40)</option>
+                    <option value="[40-50)">[40-50)</option>
+                    <option value="[50-60)">[50-60)</option>
+                    <option value="[60-70)" selected>[60-70)</option>
+                    <option value="[70-80)">[70-80)</option>
+                    <option value="[80-90)">[80-90)</option>
+                    <option value="[90-100)">[90-100)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Race</label>
+                <select name="race" id="race">
+                    <option value="Caucasian" selected>Caucasian</option>
+                    <option value="AfricanAmerican">African American</option>
+                    <option value="Hispanic">Hispanic</option>
+                    <option value="Asian">Asian</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Gender</label>
+                <select name="gender" id="gender">
+                    <option value="Male" selected>Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🩸 Lab & Clinical Values</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Glucose Level (mg/dL)</label>
+                <input type="number" id="glucose_level" name="glucose_level"
+                       value="140" min="50" max="500" step="0.1">
+                <small>Normal: 70–99 | Pre-DM: 100–125 | DM: ≥126</small>
+            </div>
+            <div class="form-group">
+                <label>HbA1c Level (%)</label>
+                <input type="number" id="hba1c_level" name="hba1c_level"
+                       value="7.5" min="3" max="15" step="0.1">
+                <small>Normal: &lt;5.7 | Pre-DM: 5.7–6.4 | DM: ≥6.5</small>
+            </div>
+            <div class="form-group">
+                <label>Number of Lab Procedures</label>
+                <input type="number" id="num_lab_procedures" name="num_lab_procedures"
+                       value="44" min="1" max="132">
+            </div>
+            <div class="form-group">
+                <label>Number of Diagnoses</label>
+                <input type="number" id="number_diagnoses" name="number_diagnoses"
+                       value="8" min="1" max="16">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🏥 Hospital Stay Information</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Days in Hospital</label>
+                <input type="number" id="time_in_hospital" name="time_in_hospital"
+                       value="7" min="1" max="14">
+                <small>Length of current stay (1–14 days)</small>
+            </div>
+            <div class="form-group">
+                <label>Number of Medications</label>
+                <input type="number" id="num_medications" name="num_medications"
+                       value="15" min="1" max="32">
+            </div>
+            <div class="form-group">
+                <label>Number of Procedures</label>
+                <input type="number" id="num_procedures" name="num_procedures"
+                       value="1" min="0" max="6">
+            </div>
+            <div class="form-group">
+                <label>Prior Inpatient Visits</label>
+                <input type="number" id="number_inpatient" name="number_inpatient"
+                       value="0" min="0" max="21">
+                <small>In the past year</small>
+            </div>
+            <div class="form-group">
+                <label>Prior Emergency Visits</label>
+                <input type="number" id="number_emergency" name="number_emergency"
+                       value="0" min="0" max="76">
+                <small>In the past year</small>
+            </div>
+            <div class="form-group">
+                <label>Prior Outpatient Visits</label>
+                <input type="number" id="number_outpatient" name="number_outpatient"
+                       value="0" min="0" max="42">
+                <small>In the past year</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📋 Admission Details</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Admission Type</label>
+                <select name="admission_type_id" id="admission_type_id">
+                    <option value="1" selected>Emergency</option>
+                    <option value="2">Urgent</option>
+                    <option value="3">Elective</option>
+                    <option value="4">Newborn</option>
+                    <option value="6">Not Available</option>
+                    <option value="7">Trauma Center</option>
+                    <option value="8">Not Mapped</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Discharge Disposition</label>
+                <select name="discharge_disposition_id" id="discharge_disposition_id">
+                    <option value="1" selected>Discharged to Home</option>
+                    <option value="2">Transferred to SNF</option>
+                    <option value="3">Transferred to ICF</option>
+                    <option value="4">Transferred to Other</option>
+                    <option value="5">Expired</option>
+                    <option value="6">Left AMA</option>
+                    <option value="7">Discharged/Transferred to Home with Home Health</option>
+                    <option value="8">Hospice / Home</option>
+                    <option value="9">Hospice / Medical Facility</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Admission Source</label>
+                <select name="admission_source_id" id="admission_source_id">
+                    <option value="1">Physician Referral</option>
+                    <option value="2">Clinic Referral</option>
+                    <option value="3">HMO Referral</option>
+                    <option value="4">Transfer Hospital</option>
+                    <option value="5">Transfer SNF</option>
+                    <option value="6">Transfer Another</option>
+                    <option value="7" selected>Emergency Room</option>
+                    <option value="8">Court/Law</option>
+                    <option value="9">Not Available</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Predict Button -->
+    <div class="card" style="padding:20px 32px;">
+        <button class="btn-predict" id="predictBtn" onclick="runPrediction()">
+            🔍 Predict Diabetes Risk
+        </button>
+    </div>
+
+    <!-- Result Panel -->
+    <div class="card" id="result-panel">
+        <h2>📊 Prediction Result</h2>
+        <div id="result-body"></div>
+    </div>
+
+    <div class="disclaimer">
+        <strong>⚠ Medical Disclaimer:</strong>
+        This tool is for educational and research purposes only.
+        It is NOT a substitute for professional medical diagnosis.
+        Always consult a licensed healthcare provider for medical decisions.
+    </div>
+
+</div><!-- /container -->
+
+<footer>
+    Smart Healthcare Prediction System · University Project
+    · Dataset: UCI Diabetes 130-US Hospitals (Strack et al., 2014)
+</footer>
+
+<script>
+    function collectFormData() {
+        const fields = ['age','race','gender','glucose_level','hba1c_level',
+                        'num_lab_procedures','number_diagnoses','time_in_hospital',
+                        'num_medications','num_procedures','number_inpatient',
+                        'number_emergency','number_outpatient',
+                        'admission_type_id','discharge_disposition_id','admission_source_id'];
+        const data = new FormData();
+        fields.forEach(f => {
+            const el = document.getElementById(f);
+            if (el) data.append(f, el.value);
+        });
+        return data;
+    }
+
+    async function runPrediction() {
+        const btn = document.getElementById('predictBtn');
+        const panel = document.getElementById('result-panel');
+        const body  = document.getElementById('result-body');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Analysing...';
+        panel.style.display = 'none';
+
+        try {
+            const resp = await fetch('/predict', {
+                method: 'POST',
+                body: collectFormData()
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                body.innerHTML = `<div class="error-msg">⚠ Error: ${data.error}</div>`;
+            } else {
+                renderResult(data);
+            }
+            panel.style.display = 'block';
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch(e) {
+            body.innerHTML = `<div class="error-msg">⚠ Network error: ${e.message}</div>`;
+            panel.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '🔍 Predict Diabetes Risk';
+        }
+    }
+
+    function renderResult(data) {
+        const icons = {0:'✅', 1:'⚠️', 2:'🚨'};
+        const icon = icons[data.class_id] || '🔵';
+        const probs = data.probabilities;
+        const barClasses = ['bar-0','bar-1','bar-2'];
+        const labels = ['Non-Diabetic','Pre-Diabetic','Diabetic'];
+
+        const probBars = labels.map((label, i) => {
+            const pct = probs[label] || 0;
+            return `
+                <div class="prob-row">
+                    <span class="prob-label">${label}</span>
+                    <div class="prob-bar-track">
+                        <div class="prob-bar-fill ${barClasses[i]}"
+                             style="width:0%" data-target="${pct}%"></div>
+                    </div>
+                    <span class="prob-val">${pct}%</span>
+                </div>`;
+        }).join('');
+
+        document.getElementById('result-body').innerHTML = `
+            <div class="result-header"
+                 style="background:${data.color}22; border:2px solid ${data.color}44;">
+                <div class="result-icon">${icon}</div>
+                <div>
+                    <div class="result-label" style="color:${data.color}">
+                        ${data.class_label}
+                    </div>
+                    <div class="result-confidence">
+                        Model confidence: <strong>${data.confidence}%</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="risk-message">${data.risk_message}</div>
+            <h3 style="font-size:0.9rem;color:#445;margin-bottom:10px;text-transform:uppercase;
+                        letter-spacing:0.5px;">Class Probabilities</h3>
+            <div class="prob-bars">${probBars}</div>`;
+
+        // Animate bars after DOM insert
+        requestAnimationFrame(() => {
+            document.querySelectorAll('.prob-bar-fill').forEach(bar => {
+                setTimeout(() => bar.style.width = bar.dataset.target, 80);
+            });
+        });
+    }
+</script>
+</body>
+</html>
